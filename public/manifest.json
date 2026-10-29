@@ -1,9 +1,8 @@
 {
-  "short_name": "Button Clicker",
-  "name": "Button Clicker",
-  "icons": [],
-  "start_url": ".",
+  "short_name": "Cookie Foundry",
+  "name": "Cookie Foundry \u00b7 arcade.fun",
+  "start_url": "./",
   "display": "standalone",
-  "theme_color": "#000000",
-  "background_color": "#ffffff"
+  "theme_color": "#34271f",
+  "background_color": "#f7f3e9"
 }

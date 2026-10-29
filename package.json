@@ -1,7 +1,7 @@
 {
-  "name": "button-clicker",
-  "version": "1.0.0-alpha",
-  "description": "A button clicker idle game.",
+  "name": "cookie-foundry",
+  "version": "1.0.0",
+  "description": "A cozy cookie bakery incremental game for arcade.fun, forked from Button Clicker.",
   "author": "Mark <mark@remarkablemark.org>",
   "scripts": {
     "build": "vite build",
@@ -9,11 +9,11 @@
     "lint": "eslint .",
     "lint:fix": "npm run lint -- --fix",
     "lint:tsc": "tsc --noEmit",
-    "prepare": "husky",
+    "test": "node --experimental-strip-types --test test/*.test.mjs",
     "preview": "vite preview",
-    "start": "vite --open"
+    "start": "vite --host 127.0.0.1"
   },
-  "homepage": "https://remarkablegames.org/button-clicker/",
+  "homepage": "https://arcade.fun",
   "devDependencies": {
     "@commitlint/cli": "21.2.4",
     "@commitlint/config-conventional": "21.2.4",
@@ -39,11 +39,11 @@
     "react": "19.3.1",
     "react-dom": "19.3.1",
     "tailwindcss": "4.3.3",
-    "tw-elements": "2.0.0",
     "typescript": "5.9.3",
     "vite": "8.3.5",
     "zustand": "5.0.16"
   },
   "private": true,
-  "license": "MIT"
+  "license": "MIT",
+  "type": "module"
 }
