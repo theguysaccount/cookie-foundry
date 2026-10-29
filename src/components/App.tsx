@@ -13,12 +13,15 @@ import {
 } from '../game/engine';
 import { useBakery } from '../game/store';
 import Icon from './Icon';
+import BakeryWorld from './BakeryWorld';
+import BuildingArt, { CookieHelpers, CookieCrumbs } from './BuildingArt';
+import '../visual-upgrade.css';
 
 const number = (value: number, decimals = 0) =>
   value < 1e6
     ? value.toLocaleString('en-US', { maximumFractionDigits: decimals })
     : new Intl.NumberFormat('en-US', {
-        notation: 'compact',
+        notation: value >= 1e15 ? 'scientific' : 'compact',
         maximumFractionDigits: 2,
       }).format(value);
 const NEWS = [
@@ -29,6 +32,7 @@ const NEWS = [
   'Breaking: cookie economy continues to crumble upward.',
 ];
 const ART = `${import.meta.env.BASE_URL}cookie.png`;
+const BACKDROP = `${import.meta.env.BASE_URL}art/bakery-backdrop.webp`;
 type Panel = 'achievements' | 'settings' | 'prestige' | 'stats' | null;
 
 export default function App() {
@@ -60,6 +64,18 @@ export default function App() {
     value: 1,
   });
   const [confirmReset, setConfirmReset] = useState(false);
+  const [construction, setConstruction] = useState<{
+    index: number;
+    count: number;
+    serial: number;
+  } | null>(null);
+  const [motion, setMotion] = useState(() => {
+    try {
+      return localStorage.getItem('arcade.cookie-foundry.motion') !== 'off';
+    } catch {
+      return true;
+    }
+  });
   const [fileError, setFileError] = useState('');
   const dialog = useRef<HTMLDialogElement>(null);
   const file = useRef<HTMLInputElement>(null);
@@ -113,6 +129,40 @@ export default function App() {
     document.title = `${number(Math.floor(game.cookies))} cookies · Cookie Foundry`;
   }, [Math.floor(game.cookies)]);
 
+  useEffect(() => {
+    if (!construction) return;
+    if (window.matchMedia('(min-width: 1150px)').matches) {
+      document
+        .getElementById(`bakery-floor-${BUILDINGS[construction.index].id}`)
+        ?.scrollIntoView({ behavior: 'auto', block: 'nearest' });
+    }
+    const timer = window.setTimeout(() => setConstruction(null), 4200);
+    return () => clearTimeout(timer);
+  }, [construction]);
+  const jumpTo = (id: string, block: ScrollLogicalPosition = 'start') =>
+    document.getElementById(id)?.scrollIntoView({
+      behavior:
+        !motion || window.matchMedia('(prefers-reduced-motion: reduce)').matches
+          ? 'auto'
+          : 'smooth',
+      block,
+    });
+  const toggleMotion = () => {
+    const next = !motion;
+    setMotion(next);
+    try {
+      localStorage.setItem('arcade.cookie-foundry.motion', next ? 'on' : 'off');
+    } catch {
+      /* The visual preference can remain session-only. */
+    }
+  };
+  const handleBuy = (index: number, count: number) => {
+    const before = useBakery.getState().game.buildings[index];
+    buy(index, count);
+    const added = useBakery.getState().game.buildings[index] - before;
+    if (added > 0) setConstruction({ index, count: added, serial: Date.now() });
+  };
+
   const handleBake = (event: MouseEvent<HTMLButtonElement>) => {
     const rect = event.currentTarget.getBoundingClientRect();
     setClickEffect({
@@ -149,7 +199,10 @@ export default function App() {
   };
 
   return (
-    <div className="app-shell">
+    <div
+      className="app-shell living-edition"
+      data-motion={motion ? 'on' : 'off'}
+    >
       <header className="topbar">
         <a
           className="arcade-logo"
@@ -162,9 +215,18 @@ export default function App() {
         </a>
         <span className="header-divider" />
         <span className="game-wordmark">
-          Cookie Foundry<span className="edition">THE BAKERY IS OPEN</span>
+          Cookie Foundry<span className="edition">A LIVING COOKIE EMPIRE</span>
         </span>
         <div className="header-actions">
+          <button
+            className="motion-button"
+            onClick={toggleMotion}
+            aria-pressed={motion}
+            aria-label={motion ? 'Turn animations off' : 'Turn animations on'}
+          >
+            <Icon name="sparkle" size={16} />
+            <span>Motion {motion ? 'on' : 'off'}</span>
+          </button>
           <span className="save-state">
             <i />
             {saveStatus}
@@ -178,21 +240,38 @@ export default function App() {
           </button>
         </div>
       </header>
+      <nav className="bakery-jump-nav" aria-label="Bakery sections">
+        <button onClick={() => jumpTo('cookie-counter')}>
+          <Icon name="cookie" size={17} />
+          Bake
+        </button>
+        <button onClick={() => jumpTo('living-bakery')}>
+          <Icon name="oven" size={17} />
+          Bakery<span>{totalBuildings}</span>
+        </button>
+        <button onClick={() => jumpTo('bakery-shop')}>
+          <Icon name="whisk" size={17} />
+          Shop
+        </button>
+      </nav>
       <main className="game-layout">
         <section
+          id="cookie-counter"
           className={`bakery-stage ${isFrenzy ? 'frenzy' : ''}`}
           aria-label="Your bakery"
         >
+          <img
+            className="bakery-wall"
+            src={BACKDROP}
+            alt=""
+            aria-hidden="true"
+          />
           <div className="stage-text">
             <div className="eyebrow">
-              <span>✦</span> SMALL BATCH. BIG DREAMS.
+              <span>✦</span> FRESH FROM YOUR FOUNDRY.
             </div>
-            <h1>
-              A little cookie.
-              <br />
-              An endless empire.
-            </h1>
-            <p>Every great bakery starts with one good batch.</p>
+            <h1>Bake a little magic.</h1>
+            <p>One cookie starts it. You build the rest.</p>
           </div>
           <div className="cookie-bank">
             <span className="bank-number" data-testid="cookie-count">
@@ -206,6 +285,7 @@ export default function App() {
             </div>
           </div>
           <div className="cookie-area">
+            <CookieHelpers count={game.buildings[0]} />
             <div className="orbit orbit-one" />
             <div className="orbit orbit-two" />
             <span className="stage-spark spark-one">✧</span>
@@ -236,6 +316,7 @@ export default function App() {
                 </span>
               ) : null}
             </button>
+            <CookieCrumbs serial={clickEffect.key} />
             {goldenUntil > 0 ? (
               <button
                 className="golden-cookie"
@@ -282,13 +363,16 @@ export default function App() {
             </div>
           </div>
         </section>
-        <section className="management" aria-label="Manage your bakery">
+        <BakeryWorld game={game} />
+        <section
+          id="bakery-shop"
+          className="management"
+          aria-label="Manage your bakery"
+        >
           <div className="management-top">
             <div>
-              <div className="eyebrow cocoa">
-                FROM YOUR FIRST BATCH TO THE STARS
-              </div>
-              <h2>Build something sweet.</h2>
+              <div className="eyebrow cocoa">YOUR NEXT GREAT INGREDIENT</div>
+              <h2>The bakery shop.</h2>
             </div>
             <button
               className="text-button stats-button"
@@ -303,14 +387,14 @@ export default function App() {
               <Icon name="oven" />
               <p>
                 <strong>{number(totalBuildings)}</strong>
-                <span>busy bakers & buildings</span>
+                <span>working units</span>
               </p>
             </div>
             <div>
               <Icon name="cookie" />
               <p>
                 <strong>{number(game.totalEarned)}</strong>
-                <span>cookies baked, ever</span>
+                <span>baked, ever</span>
               </p>
             </div>
             <button onClick={() => setPanel('achievements')}>
@@ -377,12 +461,12 @@ export default function App() {
                     <button
                       key={building.id}
                       className={`building-row ${affordable ? 'affordable' : ''}`}
-                      onClick={() => buy(index, quantity)}
+                      onClick={() => handleBuy(index, quantity)}
                       disabled={!affordable}
                       aria-label={`Buy ${quantity} ${building.name} for ${number(cost)} cookies`}
                     >
                       <span className={`building-icon tier-${index % 5}`}>
-                        <Icon name={building.icon} size={26} />
+                        <BuildingArt index={index} />
                       </span>
                       <span className="building-detail">
                         <span className="building-name">
@@ -465,8 +549,8 @@ export default function App() {
               <Icon name="whisk" size={27} />
             </span>
             <div>
-              <h3>A secret ingredient changes everything.</h3>
-              <p>Learn recipes to make every click and every baker count.</p>
+              <h3>A pinch of possibility.</h3>
+              <p>Discover recipes. Make the whole bakery better.</p>
             </div>
             <button
               onClick={() =>
@@ -521,6 +605,40 @@ export default function App() {
           <Icon name="cookie" size={14} />
         </button>
       </footer>
+      {construction ? (
+        <div
+          key={construction.serial}
+          className="construction-toast"
+          role="status"
+          data-testid="construction-toast"
+        >
+          <BuildingArt index={construction.index} />
+          <span>
+            <small>YOUR BAKERY JUST GREW</small>
+            <strong>
+              {BUILDINGS[construction.index].name} ×{construction.count}
+            </strong>
+          </span>
+          <button
+            onClick={() => {
+              jumpTo(
+                `bakery-floor-${BUILDINGS[construction.index].id}`,
+                'center',
+              );
+              setConstruction(null);
+            }}
+          >
+            See bakery <Icon name="arrow" size={15} />
+          </button>
+          <button
+            className="construction-close"
+            aria-label="Dismiss building notification"
+            onClick={() => setConstruction(null)}
+          >
+            <Icon name="close" size={14} />
+          </button>
+        </div>
+      ) : null}
       {notice ? (
         <div className="toast" role="status">
           <Icon name="check" size={18} />
